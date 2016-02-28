@@ -1,10 +1,13 @@
-What is a CadQuery?
+CadQuery 2.0
 ========================================
 
-[![Travis Build Status](https://travis-ci.org/dcowden/cadquery.svg)](https://travis-ci.org/dcowden/cadquery)
-[![Coverage Status](https://coveralls.io/repos/dcowden/cadquery/badge.svg)](https://coveralls.io/r/dcowden/cadquery)
-[![GitHub version](https://badge.fury.io/gh/dcowden%2Fcadquery.svg)](https://github.com/dcowden/cadquery/releases/tag/v0.3.0)
-[![License](https://img.shields.io/badge/license-Apache2-blue.svg)](https://github.com/dcowden/cadquery/blob/master/LICENSE)
+This branch is a work in progress. It is the next major version of CQ, which will be a significant re-write
+of the current release.
+
+CadQuery Goals
+-----------------
+
+These goals are unchanged from CQ 0.X
 
 CadQuery is an intuitive, easy-to-use python based language for building parametric 3D CAD models.  CadQuery is for 3D CAD what jQuery is for javascript.  Imagine selecting Faces of a 3d object the same way you select DOM objects with JQuery!
 
@@ -15,116 +18,98 @@ CadQuery has several goals:
 * Output high quality CAD formats like STEP and AMF in addition to traditional STL
 * Provide a non-proprietary, plain text model format that can be edited and executed with only a web browser
 
-Using CadQuery, you can write short, simple scripts that produce high quality CAD models.  It is easy to make many different objects using a single script that can be customized.
+CQ 2.0 Changes
+--------------------
 
-Full Documentation
-============================
-You can find the full cadquery documentation at http://dcowden.github.io/cadquery
-
-
-Getting Started With CadQuery
-========================================
-
-The easiest way to get started with CadQuery is to Install FreeCAD (version 14+)  (http://www.freecadweb.org/), and then to use our great CadQuery-FreeCAD plugin here: https://github.com/jmwright/cadquery-freecad-module
-
-
-It includes the latest version of cadquery alreadby bundled, and has super-easy installation on Mac, Windows, and Unix.
-
-It has tons of awesome features like integration with FreeCAD so you can see your objects, code-autocompletion, an examples bundle, and script saving/loading. Its definitely the best way to kick the tires!
-
-We also have a Google Group to make it easy to get help from other CadQuery users. Please join the group and introduce yourself, and we would also love to hear what you are doing with CadQuery. https://groups.google.com/forum/#!forum/cadquery
+* Based on pythonOCC/OCE, not on FreeCAD. FreeCAD got CQ started, but is too limiting going forward.
+* Strict separation of CQ and its implementation. We want to support other CAD kernels later.
+* Separate selector tree and feature tree.  In CQ 0.X, the feature tree and the selector tree were the same. This was a design decision that caused a lot of problems.  The two concepts need to be separate
+* operationIds. Each operation can have an id, which can be used to select the features/solids created or modified by that operation
+* created-by selectors. CQ 2.0 needs to support, from the ground-up, the ability to select features based on the operation that created them.
+* provide more options about locating the origin on new workplanes
+* easier to use plugin framework. plugins need to be separated more clearly from core code ( cbore, csk, for example )
+* more separation between 3d primitives, 2d operations, selection operations, and modification operations
+* the CQ object will server as a facade for other objects. It should not implement anything itself.
+* much more modular code. we need code a lot easier to test and edit. 
 
 
 
-Why CadQuery instead of OpenSCAD?
-========================================
+How CQ 2.0 will work ( roughly)
+--------------------------------
 
-CadQuery is based on OpenCasCade.  CadQuery shares many features with OpenSCAD, another open source, script based, parametric model generator.
+The Context
+------------
+Modeling will start with a Context. creating a new context will create a completely new starting point. 
+Any global state will be stored in the context.
 
-The primary advantage of OpenSCAD is the large number of already existing model libaries  that exist already. So why not simply use OpenSCAD?
+The feature tree
+-----------------
+Each context has a single feature tree. The feature tree stores the results of all of the operations.
+Each time a solid is created or modified, a new node is created in the tree, which points to the node before it.
+In MOST cases, the 'feature tree' will really be a line.  For example, consider the below CQ 0.3 code:
 
-CadQuery scripts have several key advantages over OpenSCAD:
+   a = CQ.Workplane('XY')
+   b = b.box(1,2,3)
+   c = b.faces(">Z").workplane().circle(2.0).extrude(1.0)
+   d = b.faces(">Z").workplane().hole(0.1,thru=True)
+   
+Here, 'a' refers to the root node in the tree. This has no solid stored with the node 
+'b' refers to a direct child of a.  A box is stored in this node
+'c' refers to a direct child of b.  This node contains a box with a cylinder sticking out of the top
+'d' also refers to a direct child of b. This node contains a box with a small hole in it.
 
-1. **The scripts use a standard programming language**, python, and thus can benefit from the associated infrastructure.
-   This includes many standard libraries and IDEs
+Note the difference in behavior with CQ 0.3, when the same underlying solid would be shared with all of these references.
 
-2. **More powerful CAD kernel** OpenCascade is much more powerful than CGAL. Features supported natively
-   by OCC include NURBS, splines, surface sewing, STL repair, STEP import/export,  and other complex operations,
-   in addition to the standard CSG operations supported by CGAL
+Workplanes
+-------------
+Workplanes will remain mostly unchanged in CQ 2.0.  they represent a 2-d context, which can be used to locate geometry
+relative to the selected plane. Just like in CQ 0.X, a user can create a workplane from one of the builtins, or from a selected
+face. This implies accumulating 2-d geometry while the user is 'drawing' on it.
 
-3. **Ability to import/export STEP** We think the ability to begin with a STEP model, created in a CAD package,
-   and then add parametric features is key.  This is possible in OpenSCAD using STL, but STL is a lossy format
+Unlike CQ 2.0, workplanes should ONLY provide 2d operations.  Code that does 3d operations should be located elsewhere.
 
-4. **Less Code and easier scripting**  CadQuery scripts require less code to create most objects, because it is possible to locate
-   features based on the position of other features, workplanes, vertices, etc.
+geom.py
+-----------
+All standard geometry ( planes, vectors, points, transformations ) must be declared here.
 
-5. **Better Performance**  CadQuery scripts can build STL, STEP, and AMF faster than OpenSCAD.
+Operations
+-------------
+Operations create or edit 3d features. Unlike CQ 0.X, operations will have an identifier, which allows selecting the features
+of a solid that were created by that operation.  Users should be able to provide their own operations, which should make it
+much more straightforward to extend cadquery.
 
-License
-========
+Binding to Implementations
+---------------------------
+CQ 2.0 must be designed to support multiple backend implementations. As a result, operations, geometry, and selectors
+must not directly include pythonOCC/OCE code. 
 
-CadQuery is licensed under the terms of the Apache Public License, version 2.0.
-A copy of the license can be found at http://www.apache.org/licenses/LICENSE-2.0
+There are several ways that the code can support alternate backends.  I'm not sure the same approach will work best everywhere.
+One way is to provide common base classes, and then require a separate backend implementation that overrides/implements various
+functions. This would probably work well for Operations.
 
-Where is the GUI?
-==================
+Another way would be to allow each backend to provide its own implementation of the entire package, and then link the correct
+one in using the import system. for example, suppose we have geom_oce.py and geom_freecad.py-- but then we simply link
+the proper one based on which seems to be available when we run.
 
-If you would like IDE support, you can use CadQuery inside of FreeCAD. There's an excellent plugin module here https://github.com/jmwright/cadquery-freecad-module
 
-CadQuery also provides the backbone of http://parametricparts.com, so the easiest way to see it in action is to review the samples and objects there.
+Selectors
+-----------
+Just like CQ 0.X, selectors allow the user to find features, and then use them to build more geometry.
+Unlike CQ 0.X, chained selectors are NOT the same as the feature tree itself, and can be created independently of the tree.
 
-Installing -- FreeStanding Installation
-========================================
+This should make the CQ code much more maintainable and readable.
 
-Use these steps if you would like to write CadQuery scripts as a python API.  In this case, FreeCAD is used only as a CAD kernel.
+When a Selector is created, it is given a single node in the feature tree. The solid geometry store in that node is the basis
+for selection operations.  
 
-1. install FreeCAD, version 0.12 or greater for your platform.  http://sourceforge.net/projects/free-cad/.
+The CQ.py facade class
+-----------------------
 
-2. adjust your path if necessary.  FreeCAD bundles a python interpreter, but you'll probably want to use your own,
-   preferably one that has virtualenv available.  To use FreeCAD from any python interpreter, just append the FreeCAD
-   lib directory to your path. On  (*Nix)::
+CQ.py will act as a facade that glues the various components together. When the user performs an operation, the following
+occurs:
+* The operation is executed
+* A new node in the feature tree is created, representing the result of the operation
+* A new CQ selector is automatically created that points to the current node in the feature tree
 
-        import sys
-		sys.path.append('/usr/lib/freecad/lib')
-
-   or on Windows::
-
-	    import sys
-		sys.path.append('/c/apps/FreeCAD/bin')
-
-   *NOTE* FreeCAD on Windows will not work with python 2.7-- you must use pthon 2.6.X!!!!
-
-3. install cadquery::
-
-		pip install cadquery
-
-3. test your installation::
-
-		from cadquery import *
-		box = Workplane("XY").box(1,2,3)
-		exporters.toString(box,'STL')
-
-You're up and running!
-
-Installing -- Using CadQuery from Inside FreeCAD
-=================================================
-
-Use the Excellent CadQuery-FreeCAD plugin here:
-   https://github.com/jmwright/cadquery-freecad-module
-
-It includes a distribution of the latest version of cadquery.
-
-Where does the name CadQuery come from?
-========================================
-
-CadQuery is inspired by ( `jQuery <http://www.jquery.com>`_ ), a popular framework that
-revolutionized web development involving javascript.
-
-If you are familiar with how jQuery, you will probably recognize several jQuery features that CadQuery uses:
-
-* A fluent api to create clean, easy to read code
-* Language features that make selection and iteration incredibly easy
-*
-* Ability to use the library along side other python libraries
-* Clear and complete documentation, with plenty of samples.
+This will mean that the CQ 2.0 syntax will be very similar to CQ 1.X syntax, but the underlying implementation will be very different
 
