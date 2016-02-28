@@ -46,17 +46,20 @@ The feature tree
 -----------------
 Each context has a single feature tree. The feature tree stores the results of all of the operations.
 Each time a solid is created or modified, a new node is created in the tree, which points to the node before it.
-In MOST cases, the 'feature tree' will really be a line.  For example, consider the below CQ 0.3 code::
+In MOST cases, the 'feature tree' will really be a line.  
 
-   a = CQ.Workplane('XY')
-   b = b.box(1,2,3)
-   c = b.faces(">Z").workplane().circle(2.0).extrude(1.0)
-   d = b.faces(">Z").workplane().hole(0.1,thru=True)
+For example, consider the below CQ 0.3 code::
+
+	a = CQ.Workplane('XY')
+	b = b.box(1,2,3)
+	c = b.faces(">Z").workplane().circle(2.0).extrude(1.0)
+	d = b.faces(">Z").workplane().hole(0.1,thru=True)
    
-Here, 'a' refers to the root node in the tree. This has no solid stored with the node 
-'b' refers to a direct child of a.  A box is stored in this node
-'c' refers to a direct child of b.  This node contains a box with a cylinder sticking out of the top
-'d' also refers to a direct child of b. This node contains a box with a small hole in it.
+Here, 
+ * 'a' refers to the root node in the tree. This has no solid stored with the node 
+ * 'b' refers to a direct child of a.  A box is stored in this node
+ * 'c' refers to a direct child of b.  This node contains a box with a cylinder sticking out of the top
+ * 'd' also refers to a direct child of b. This node contains a box with a small hole in it.
 
 Note the difference in behavior with CQ 0.3, when the same underlying solid would be shared with all of these references.
 CQ 0.X attempts to save memory by removing old solids that are no longer referenced.  This version does not make that attempt--
