@@ -128,16 +128,26 @@ Binding to Implementations
 CQ 2.0 must be designed to support multiple backend implementations. As a result, operations, geometry, and selectors
 must not directly include pythonOCC/OCE code. 
 
-There are several ways that the code can support alternate backends.  I'm not sure the same approach will work best everywhere.
-One way is to provide common base classes, and then require a separate backend implementation that overrides/implements various
-functions. This would probably work well for Operations.
+We have to consider how to achieve this carefully.  If we try to factor out the interfaces too early, we'll end up carring
+two sets of classes for everything. For example, a Plane as well as an OCE-based Plane implementation.
 
-Another way would be to allow each backend to provide its own implementation of the entire package, and then link the correct
-one in using the import system. for example, suppose we have geom_oce.py and geom_freecad.py-- but then we simply link
-the proper one based on which seems to be available when we run.
+What's the best way to do this? 
 
+One is the traditional OOP way: we create classes and interfaces, and require the implementations to override/implement them.
 
+The other way is to simply provide implementations, and then use __init__.py to load the one that will work, based on the 
+backends that we see::
 
+ if OCEAppearsToBeInstalled():
+     import geom_oce as geom
+ else if FreeCADAppearsToBeInstalled():
+     import geom_freecad as geom
+
+This approach requires that both interfaces match some common interface, but really doesnt specify what the common interface is.
+In practice, we'd develop the OCE version, and then just instruct other implementations that they must match that one.
+
+What are everyone's thoughts on this? I think we should do the second one initially.  In practice its not clear at all what the
+2nd cad kernels would even be.
 
 The CQ.py facade class
 -----------------------
