@@ -51,7 +51,7 @@ In MOST cases, the 'feature tree' will really be a line.
 For example, consider the below CQ 0.3 code::
 
 	a = CQ.Workplane('XY')
-	b = b.box(1,2,3)
+	b = a.box(1,2,3)
 	c = b.faces(">Z").workplane().circle(2.0).extrude(1.0)
 	d = b.faces(">Z").workplane().hole(0.1,thru=True)
    
@@ -71,7 +71,7 @@ Workplanes will remain mostly unchanged in CQ 2.0.  they represent a 2-d context
 relative to the selected plane. Just like in CQ 0.X, a user can create a workplane from one of the builtins, or from a selected
 face. This implies accumulating 2-d geometry while the user is 'drawing' on it.
 
-Unlike CQ 2.0, workplanes should ONLY provide 2d operations.  Code that does 3d operations should be located elsewhere.
+Unlike CQ 0.X, workplanes should ONLY provide 2d operations.  Code that does 3d operations should be located elsewhere.
 
 geom.py
 -----------
