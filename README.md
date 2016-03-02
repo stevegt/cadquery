@@ -32,6 +32,14 @@ CQ 2.0 Changes
 * the CQ object will server as a facade for other objects. It should not implement anything itself.
 * much more modular code. we need code a lot easier to test and edit. 
 
+Coding Philosophy
+---------------------
+We want CQ to be as 'pythonic' as possible. That means using native python data structures when possible. 
+Examples:
+
+* vectors should be simple 3-tuples
+* functions should use all lowercase, with underscores between words ( function_name)
+* all code should be covered with unit tests. we'll use nosetests for this version, the syntax is nicer
 
 
 How CQ 2.0 will work ( roughly)
